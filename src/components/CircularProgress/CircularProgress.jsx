@@ -1,8 +1,7 @@
-// src/components/CircularProgress/CircularProgress.jsx
 import React from 'react';
 
 export const CircularProgress = ({ percentage }) => {
-  const size = 88;
+  const size = 80; // Reduced from 88
   const strokeWidth = 3;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
@@ -35,10 +34,7 @@ export const CircularProgress = ({ percentage }) => {
         strokeDashoffset={offset}
         strokeLinecap="round"
         fill="none"
-        className={percentage <= 30 ? "animate-pulse" : ""}
-        style={{
-          transition: 'stroke-dashoffset 1s ease-in-out, stroke 1s ease-in-out'
-        }}
+        className={`transition-all duration-300 ${percentage <= 30 ? "animate-pulse" : ""}`}
       />
     </svg>
   );

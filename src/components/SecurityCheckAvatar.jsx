@@ -1,24 +1,31 @@
-// src/components/SecurityCheckAvatar/SecurityCheckAvatar.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Card, CardContent } from "./Ui/Card/Card";
 import { GuardAvatar } from './GuardAvatar/GuardAvatar';
+import { CameraModal } from './CameraModal/CameraModal';
+import { useFaceDetection } from '../hooks/useFaceDetection';
+import { useGuardTimer } from '../hooks/useGuardTimer';
+
+const initialGuards = [
+  { id: 1, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 1' },
+  { id: 2, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 2' },
+  { id: 3, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 3' },
+  { id: 4, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 4' }
+];
 
 const SecurityCheckAvatar = () => {
-  const [guards, setGuards] = useState([
-    { id: 1, photo: null, isActive: false, timeRemaining: 300, name: 'Guard 1' },
-    { id: 2, photo: null, isActive: false, timeRemaining: 300, name: 'Guard 2' },
-    { id: 3, photo: null, isActive: false, timeRemaining: 300, name: 'Guard 3' },
-    { id: 4, photo: null, isActive: false, timeRemaining: 300, name: 'Guard 4' }
-  ]);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
   const [countdown, setCountdown] = useState(null);
+  const [processingPhoto, setProcessingPhoto] = useState(false);
+  
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const currentGuardIdRef = useRef(null);
 
-  const updateGuardPhoto = (guardId, photoUrl) => {
-    console.log('Updating photo for guard:', guardId);
+  const [guards, setGuards] = useGuardTimer(initialGuards);
+  const { isDetecting, detectionResult, detectFace } = useFaceDetection();
+
+  const updateGuardPhoto = useCallback((guardId, photoUrl) => {
     setGuards(prevGuards => 
       prevGuards.map(guard => 
         guard.id === guardId 
@@ -26,35 +33,17 @@ const SecurityCheckAvatar = () => {
               ...guard,
               photo: photoUrl,
               isActive: true,
-              timeRemaining: 300,
+              timeRemaining: 60, // 1 minute timer
             }
           : guard
       )
     );
-  };
+  }, [setGuards]);
 
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
-        audio: false
-      });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        await videoRef.current.play();
-        startCountdown();
-      }
-    } catch (err) {
-      console.error('Camera error:', err);
-      handleCloseModal();
-    }
-  };
-
-  const takePhoto = () => {
+  const takePhoto = useCallback(async () => {
     if (!videoRef.current || !currentGuardIdRef.current) return;
 
+    setProcessingPhoto(true);
     const video = videoRef.current;
     const guardId = currentGuardIdRef.current;
 
@@ -70,20 +59,22 @@ const SecurityCheckAvatar = () => {
       
       // Convert to base64
       const photoUrl = canvas.toDataURL('image/jpeg', 0.8);
-      console.log('Photo captured for guard:', guardId);
 
-      // Update immediately
-      updateGuardPhoto(guardId, photoUrl);
+      // Start face detection
+      await detectFace(photoUrl);
 
-      // Clean up
-      handleCloseModal();
+      // If face detection was successful, update the guard's photo
+      if (detectionResult?.success) {
+        updateGuardPhoto(guardId, photoUrl);
+        setTimeout(handleCloseModal, 1500); // Give time to see success message
+      }
     } catch (error) {
       console.error('Error capturing photo:', error);
       handleCloseModal();
     }
-  };
+  }, [detectFace, detectionResult, updateGuardPhoto]);
 
-  const startCountdown = () => {
+  const startCountdown = useCallback(() => {
     let count = 3;
     setCountdown(count);
     
@@ -92,96 +83,84 @@ const SecurityCheckAvatar = () => {
       if (count <= 0) {
         clearInterval(interval);
         setTimeout(() => {
+          setCountdown(null);
           takePhoto();
         }, 500);
       }
       setCountdown(prev => prev > 0 ? prev - 1 : null);
     }, 1000);
-  };
+  }, [takePhoto]);
 
-  const handleCloseModal = () => {
+  const startCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: false
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+        await videoRef.current.play();
+        setIsCameraReady(true);
+        startCountdown();
+      }
+    } catch (err) {
+      console.error('Camera error:', err);
+      handleCloseModal();
+    }
+  }, [startCountdown]);
+
+  const handleCloseModal = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
     videoRef.current = null;
     setIsModalOpen(false);
+    setIsCameraReady(false);
     setCountdown(null);
-  };
+    setProcessingPhoto(false);
+  }, []);
 
-  const handleAvatarClick = (guardId) => {
-    console.log('Avatar clicked:', guardId);
+  const handleAvatarClick = useCallback((guardId) => {
     currentGuardIdRef.current = guardId;
     setIsModalOpen(true);
     setTimeout(() => {
       startCamera();
     }, 100);
-  };
-
-  // Timer effect
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setGuards(prevGuards => 
-        prevGuards.map(guard => ({
-          ...guard,
-          timeRemaining: guard.isActive ? 
-            Math.max(0, guard.timeRemaining - 1) : 300
-        }))
-      );
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
+  }, [startCamera]);
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-50">
       <Card className="w-[480px] shadow-xl">
-        <CardContent className="p-8">
-          <div className="grid grid-cols-2 gap-12 place-items-center">
+        <CardContent className="p-6">
+          <div className="grid grid-cols-2 gap-8 p-4">
             {guards.map(guard => (
-              <GuardAvatar
-                key={`guard-${guard.id}-${guard.photo ? 'withPhoto' : 'noPhoto'}`}
-                guard={guard}
-                onClick={() => handleAvatarClick(guard.id)}
-              />
+              <div 
+                key={`guard-${guard.id}`} 
+                className="flex items-center justify-center"
+              >
+                <GuardAvatar
+                  guard={guard}
+                  onClick={() => handleAvatarClick(guard.id)}
+                />
+              </div>
             ))}
           </div>
         </CardContent>
       </Card>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-[520px] shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Security Check-in Photo</h2>
-              <button 
-                onClick={handleCloseModal}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden shadow-inner">
-              {countdown !== null && (
-                <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/50 backdrop-blur-sm">
-                  <span className="text-7xl text-white font-bold animate-bounce">
-                    {countdown}
-                  </span>
-                </div>
-              )}
-              
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+  
+      <CameraModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        videoRef={videoRef}
+        isCameraReady={isCameraReady}
+        countdown={countdown}
+        processingPhoto={processingPhoto}
+        detectionResult={detectionResult}
+        isDetecting={isDetecting}
+      />
     </div>
   );
 };

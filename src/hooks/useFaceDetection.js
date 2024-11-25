@@ -1,101 +1,55 @@
-// useFaceDetection.js
-import { useState, useEffect } from 'react';
-import * as faceapi from '@vladmandic/face-api';
+import { useState, useCallback } from 'react';
+import { FaceDetector, FilesetResolver } from '@mediapipe/tasks-vision';
 
 export const useFaceDetection = () => {
-  const [isModelLoaded, setIsModelLoaded] = useState(false);
-  const [faceDetected, setFaceDetected] = useState(false);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [detectionResult, setDetectionResult] = useState(null);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const loadModels = async () => {
-      try {
-        // Define model path
-        const MODEL_URL = '/models';
-        
-        // Configure face-api.js to use the correct models
-        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-
-        if (mounted) {
-          setIsModelLoaded(true);
-          console.log('Face detection models loaded successfully');
-        }
-      } catch (error) {
-        console.error('Error loading face detection models:', error);
-        if (mounted) {
-          setIsModelLoaded(false);
-        }
-      }
-    };
-
-    loadModels();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const detectFace = async (imageElement) => {
-    if (!isModelLoaded) {
-      console.warn('Face detection models not loaded yet');
-      return null;
-    }
+  const detectFace = useCallback(async (imageData) => {
+    setIsDetecting(true);
+    setDetectionResult(null);
 
     try {
-      const options = new faceapi.TinyFaceDetectorOptions({
-        inputSize: 512,
-        scoreThreshold: 0.5
+      const vision = await FilesetResolver.forVisionTasks(
+        '/mediapipe/wasm',
+        {
+          wasmLoaderPath: '/mediapipe/wasm/vision_wasm_internal.js',
+          wasmBinaryPath: '/mediapipe/wasm/vision_wasm_internal.wasm'
+        }
+      );
+      
+      const faceDetector = await FaceDetector.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: '/mediapipe/wasm/blaze_face_short_range.tflite',
+          delegate: "CPU"
+        },
+        runningMode: "IMAGE"
       });
 
-      const detection = await faceapi.detectSingleFace(imageElement, options);
+      // Create an image element from the data URL
+      const img = new Image();
+      img.src = imageData;
+      await new Promise(resolve => img.onload = resolve);
 
-      if (detection) {
-        setFaceDetected(true);
-        return detection;
+      // Detect face
+      const detections = await faceDetector.detect(img);
+
+      if (detections.detections.length > 0) {
+        setDetectionResult({ success: true, message: 'Face detected successfully!' });
+      } else {
+        setDetectionResult({ success: false, message: 'No face detected in image' });
       }
-      
-      setFaceDetected(false);
-      return null;
-    } catch (err) {
-      console.error('Face detection error:', err);
-      setFaceDetected(false);
-      return null;
+    } catch (error) {
+      console.error('Face detection error:', error);
+      setDetectionResult({ success: false, message: 'Error during face detection' });
+    } finally {
+      setIsDetecting(false);
     }
-  };
-
-  const cropFace = (video, detection, padding = 50) => {
-    if (!detection) return null;
-
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    // Get face bounds with padding
-    const box = detection.box;
-    const width = box.width + padding * 2;
-    const height = box.height + padding * 2;
-    const x = Math.max(0, box.x - padding);
-    const y = Math.max(0, box.y - padding);
-
-    // Set canvas size to face dimensions
-    canvas.width = width;
-    canvas.height = height;
-
-    // Draw only the face region
-    ctx.drawImage(
-      video,
-      x, y, width, height,  // Source coordinates
-      0, 0, width, height   // Destination coordinates
-    );
-
-    return canvas.toDataURL('image/jpeg', 0.8);
-  };
+  }, []);
 
   return {
-    isModelLoaded,
-    faceDetected,
-    detectFace,
-    cropFace
+    isDetecting,
+    detectionResult,
+    detectFace
   };
 };

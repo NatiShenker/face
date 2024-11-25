@@ -1,33 +1,25 @@
-// CameraModal.jsx
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Camera } from 'lucide-react';
-import * as faceapi from '@vladmandic/face-api';  // Updated import
+import { FaceDetectionIndicator } from '../FaceDetectionIndicator/FaceDetectionIndicator';
 
 export const CameraModal = ({ 
   isOpen, 
   onClose, 
-  videoRef, 
-  canvasRef, 
-  isCameraReady, 
+  videoRef,
+  isCameraReady,
   countdown,
-  onPhotoTaken 
+  processingPhoto,
+  detectionResult,
+  isDetecting
 }) => {
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
-          faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-        ]);
-      } catch (err) {
-        console.error('Error loading face detection models:', err);
-      }
-    };
-    
-    if (isOpen) {
-      loadModels();
+  // Helper function to determine indicator status
+  const getIndicatorStatus = () => {
+    if (isDetecting) return 'scanning';
+    if (detectionResult) {
+      return detectionResult.success ? 'success' : 'error';
     }
-  }, [isOpen]);
+    return null;
+  };
 
   if (!isOpen) return null;
 
@@ -58,6 +50,21 @@ export const CameraModal = ({
               </span>
             </div>
           )}
+
+          {(processingPhoto || detectionResult) && (
+            <div className="absolute inset-0 flex items-center justify-center z-10">
+              <div className="text-center">
+                <FaceDetectionIndicator status={getIndicatorStatus()} />
+                {detectionResult && (
+                  <div className={`mt-4 text-lg font-medium ${
+                    detectionResult.success ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {detectionResult.message}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           
           <video
             ref={videoRef}
@@ -66,7 +73,6 @@ export const CameraModal = ({
             muted
             className="w-full h-full object-cover"
           />
-          <canvas ref={canvasRef} className="hidden" />
         </div>
       </div>
     </div>
