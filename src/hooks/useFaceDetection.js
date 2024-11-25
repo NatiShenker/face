@@ -10,17 +10,14 @@ export const useFaceDetection = () => {
     setDetectionResult(null);
 
     try {
+      // Using CDN URL instead of local files
       const vision = await FilesetResolver.forVisionTasks(
-        '/mediapipe/wasm',
-        {
-          wasmLoaderPath: '/mediapipe/wasm/vision_wasm_internal.js',
-          wasmBinaryPath: '/mediapipe/wasm/vision_wasm_internal.wasm'
-        }
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
       );
       
       const faceDetector = await FaceDetector.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath: '/mediapipe/wasm/blaze_face_short_range.tflite',
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
           delegate: "CPU"
         },
         runningMode: "IMAGE"
@@ -29,19 +26,23 @@ export const useFaceDetection = () => {
       // Create an image element from the data URL
       const img = new Image();
       img.src = imageData;
-      await new Promise(resolve => img.onload = resolve);
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
 
       // Detect face
       const detections = await faceDetector.detect(img);
+      console.log('Face detection result:', detections);
 
-      if (detections.detections.length > 0) {
+      if (detections.detections && detections.detections.length > 0) {
         setDetectionResult({ success: true, message: 'Face detected successfully!' });
       } else {
         setDetectionResult({ success: false, message: 'No face detected in image' });
       }
     } catch (error) {
       console.error('Face detection error:', error);
-      setDetectionResult({ success: false, message: 'Error during face detection' });
+      setDetectionResult({ success: false, message: `Error: ${error.message}` });
     } finally {
       setIsDetecting(false);
     }
