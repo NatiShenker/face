@@ -21,6 +21,10 @@ module.exports = {
     },
     extend: {
       keyframes: {
+        scanning: {
+          '0%, 100%': { transform: 'translateY(-30px)' },
+          '50%': { transform: 'translateY(30px)' }
+        },
         'spin-slow': {
           '0%': { transform: 'rotate(0deg)' },
           '100%': { transform: 'rotate(360deg)' }
@@ -64,7 +68,8 @@ module.exports = {
         'corner-pulse': 'corner-pulse 2s ease-in-out infinite',
         'face-scan': 'face-scan 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'success-pop': 'success-pop 0.5s ease-out forwards',
-        'error-bounce': 'error-bounce 0.5s ease-in-out'
+        'error-bounce': 'error-bounce 0.5s ease-in-out',
+        'scanning': 'scanning 2s ease-in-out infinite'
       }
     }
   },

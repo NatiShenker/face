@@ -7,10 +7,10 @@ export const useAWSRecognition = () => {
   const [recognitionResult, setRecognitionResult] = useState(null);
 
   const rekognitionClient = new RekognitionClient({
-    region: "us-east-1",
+    region: process.env.REACT_APP_AWS_REGION,
     credentials: {
-      accessKeyId: "",
-      secretAccessKey: ""
+      accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY
     }
   });
 

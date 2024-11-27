@@ -1,20 +1,20 @@
-// setupAWSCollection.js
-import { RekognitionClient, CreateCollectionCommand } from "@aws-sdk/client-rekognition";
+const dotenv = require('dotenv');
+const { RekognitionClient, CreateCollectionCommand } = require("@aws-sdk/client-rekognition");
+
+dotenv.config();
 
 const setupCollection = async () => {
-  // Initialize the Rekognition client
   const rekognitionClient = new RekognitionClient({
-    region: "us-east-1", // Using US East (N. Virginia)
+    region: process.env.REACT_APP_AWS_REGION,
     credentials: {
-      accessKeyId: '', // Replace with your Access Key
-      secretAccessKey: '' // Replace with your Secret Key
+      accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY
     }
   });
 
   try {
-    // Create a face collection
     const createCollectionCommand = new CreateCollectionCommand({
-      CollectionId: "guards-collection" // This will be our collection name
+      CollectionId: "guards-collection"
     });
 
     const response = await rekognitionClient.send(createCollectionCommand);
@@ -30,7 +30,7 @@ const setupCollection = async () => {
   }
 };
 
-// Run the setup
+// Run setup
 setupCollection()
   .then(() => console.log("Setup complete!"))
   .catch(err => console.error("Setup failed:", err));

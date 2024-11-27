@@ -1,191 +1,194 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { Card, CardContent } from "./Ui/Card/Card";
-import { GuardAvatar } from './GuardAvatar/GuardAvatar';
-import { CameraModal } from './CameraModal/CameraModal';
-import { useFaceDetection } from '../hooks/useFaceDetection';
-import { useAWSRecognition } from '../hooks/useAWSRecognition';
-import { useGuardTimer } from '../hooks/useGuardTimer';
-
-const initialGuards = [
-  { id: 1, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 1', faceId: null },
-  { id: 2, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 2', faceId: null },
-  { id: 3, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 3', faceId: null },
-  { id: 4, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 4', faceId: null }
-];
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Card } from "./Ui/Card/Card";
+import { useCamera } from '../hooks/useCamera';
+import { useFaceProcessing } from '../hooks/useFaceProcessing';
+import { useGuardState } from '../hooks/useGuardState';
+import CameraModal from './CameraModal/CameraModal';
+import GuardAvatar from './GuardAvatar/GuardAvatar';
+import GuardNameModal from './GuardNameModal/GuardNameModal';
+import FaceRecognitionAnimation from './FaceRecognitionAnimation/FaceRecognitionAnimation';
 
 const SecurityCheckAvatar = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isCameraReady, setIsCameraReady] = useState(false);
-  const [countdown, setCountdown] = useState(null);
-  const [processingPhoto, setProcessingPhoto] = useState(false);
+  const [isNameModalOpen, setIsNameModalOpen] = useState(false);
   const [isEnrollmentMode, setIsEnrollmentMode] = useState(false);
+  const [error, setError] = useState(null);
+  const [verificationResult, setVerificationResult] = useState(null);
   
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
   const currentGuardIdRef = useRef(null);
+  const pendingPhotoRef = useRef(null);
+  const pendingFaceIdRef = useRef(null);
+  
+  const { guards, updateGuard, isPositionAvailable } = useGuardState();
+  const { 
+    isCameraReady, 
+    error: cameraError, 
+    videoRef, 
+    startCamera, 
+    stopCamera, 
+    captureFrame 
+  } = useCamera();
+  const { isProcessing, processFrame } = useFaceProcessing();
 
-  const [guards, setGuards] = useGuardTimer(initialGuards);
-  const { isDetecting, detectionResult, detectFace } = useFaceDetection();
-  const { isProcessing, enrollFace, recognizeFace } = useAWSRecognition();
+  const handleVerificationNeeded = useCallback((guardId) => {
+    const guard = guards.find(g => g.id === guardId);
+    // Allow verification only for assigned guards
+    if (!guard.faceId) return;
 
-  const updateGuardPhoto = useCallback(async (guardId, photoUrl, faceId = null) => {
-    setGuards(prevGuards => 
-      prevGuards.map(guard => 
-        guard.id === guardId 
-          ? {
-              ...guard,
-              photo: photoUrl,
-              isActive: true,
-              timeRemaining: 60,
-              faceId: faceId
-            }
-          : guard
-      )
-    );
-  }, [setGuards]);
-
-  const takePhoto = useCallback(async () => {
-    if (!videoRef.current || !currentGuardIdRef.current) return;
-
-    setProcessingPhoto(true);
-    const video = videoRef.current;
-    const guardId = currentGuardIdRef.current;
-
-    try {
-      // Create temporary canvas
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      
-      // Get context and draw current frame
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0);
-      
-      // Convert to base64
-      const photoUrl = canvas.toDataURL('image/jpeg', 0.8);
-
-      // First detect face using MediaPipe
-      await detectFace(photoUrl);
-
-      if (detectionResult?.success) {
-        if (isEnrollmentMode) {
-          // Enroll face in AWS Rekognition
-          const enrollResult = await enrollFace(photoUrl, guardId);
-          if (enrollResult.success) {
-            await updateGuardPhoto(guardId, photoUrl, enrollResult.faceId);
-            setTimeout(handleCloseModal, 1500);
-          }
-        } else {
-          // Verify face using AWS Rekognition
-          const recognizeResult = await recognizeFace(photoUrl);
-          if (recognizeResult.success && 
-              recognizeResult.matchedGuardId === guardId.toString() && 
-              recognizeResult.confidence > 90) {
-            await updateGuardPhoto(guardId, photoUrl);
-            setTimeout(handleCloseModal, 1500);
-          } else {
-            throw new Error('Face verification failed');
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error processing photo:', error);
-      handleCloseModal();
-    } finally {
-      setProcessingPhoto(false);
-    }
-  }, [detectFace, detectionResult, enrollFace, recognizeFace, updateGuardPhoto, isEnrollmentMode]);
-
-  const startCountdown = useCallback(() => {
-    let count = 3;
-    setCountdown(count);
-    
-    const interval = setInterval(() => {
-      count -= 1;
-      if (count <= 0) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setCountdown(null);
-          takePhoto();
-        }, 500);
-      }
-      setCountdown(prev => prev > 0 ? prev - 1 : null);
-    }, 1000);
-  }, [takePhoto]);
-
-  const startCamera = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
-        audio: false
-      });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        await videoRef.current.play();
-        setIsCameraReady(true);
-        startCountdown();
-      }
-    } catch (err) {
-      console.error('Camera error:', err);
-      handleCloseModal();
-    }
-  }, [startCountdown]);
-
-  const handleCloseModal = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    videoRef.current = null;
-    setIsModalOpen(false);
-    setIsCameraReady(false);
-    setCountdown(null);
-    setProcessingPhoto(false);
-  }, []);
+    currentGuardIdRef.current = guardId;
+    setIsEnrollmentMode(false);
+    setIsModalOpen(true);
+    startCamera();
+  }, [guards, startCamera]);
 
   const handleAvatarClick = useCallback((guardId) => {
-    currentGuardIdRef.current = guardId;
-    // Check if this guard already has a faceId
+    console.log('Avatar clicked:', guardId);
     const guard = guards.find(g => g.id === guardId);
+    
+    if (guard.isAssigned && !guard.faceId) {
+      console.log('Position already assigned to another guard');
+      return;
+    }
+    
+    currentGuardIdRef.current = guardId;
     setIsEnrollmentMode(!guard.faceId);
     setIsModalOpen(true);
-    setTimeout(() => {
-      startCamera();
-    }, 100);
+    
+    // Wrap camera start in requestAnimationFrame for better initialization
+    requestAnimationFrame(() => {
+      console.log('Starting camera...');
+      startCamera().then((success) => {
+        console.log('Camera start result:', success);
+      }).catch(err => {
+        console.error('Camera start error:', err);
+        setError('Failed to start camera: ' + err.message);
+      });
+    });
   }, [guards, startCamera]);
+
+const handleCloseModal = useCallback(() => {
+  stopCamera();
+  setIsModalOpen(false);
+  setError(null);
+  setVerificationResult(null);
+}, [stopCamera]);
+
+const handleCapturePhoto = useCallback(async () => {
+  console.log('Capturing photo...');
+  if (!videoRef.current) {
+    console.error('No video reference available');
+    return;
+  }
+
+  try {
+    // Create a canvas element
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+
+    // Draw the video frame to canvas
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(videoRef.current, 0, 0);
+
+    // Convert to base64
+    const imageData = canvas.toDataURL('image/jpeg');
+    console.log('Photo captured, processing...');
+
+    const result = await processFrame(
+      imageData,
+      currentGuardIdRef.current,
+      isEnrollmentMode
+    );
+    
+    console.log('Process result:', result);
+    
+    if (result?.success) {
+      setVerificationResult({
+        success: true,
+        message: isEnrollmentMode ? 
+          'Enrollment successful!' : 
+          'Identity verified successfully!'
+      });
+      
+      if (isEnrollmentMode) {
+        pendingPhotoRef.current = imageData;
+        pendingFaceIdRef.current = result.faceId;
+        setTimeout(() => {
+          handleCloseModal();
+          setIsNameModalOpen(true);
+        }, 1500);
+      } else {
+        updateGuard(currentGuardIdRef.current, {
+          isActive: true,
+          timeRemaining: 60
+        });
+        setTimeout(handleCloseModal, 1500);
+      }
+    }
+  } catch (err) {
+    console.error('Photo capture error:', err);
+    setError(err.message);
+    setVerificationResult({
+      success: false,
+      message: err.message
+    });
+  }
+}, [videoRef, processFrame, isEnrollmentMode, updateGuard, handleCloseModal]);
+
+  const handleNameSubmit = useCallback((name) => {
+    if (pendingPhotoRef.current && pendingFaceIdRef.current) {
+      updateGuard(currentGuardIdRef.current, {
+        name,
+        photo: pendingPhotoRef.current,
+        faceId: pendingFaceIdRef.current,
+        isAssigned: true,
+        isActive: true,
+        timeRemaining: 60
+      });
+      
+      // Clear temporary storage
+      pendingPhotoRef.current = null;
+      pendingFaceIdRef.current = null;
+      setIsNameModalOpen(false);
+    }
+  }, [updateGuard]);
+
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-50">
-      <Card className="w-[480px] shadow-xl">
-        <CardContent className="p-6">
+      <Card className="w-[480px]">
+        <div className="p-6">
           <div className="grid grid-cols-2 gap-8 p-4">
             {guards.map(guard => (
-              <div 
-                key={`guard-${guard.id}`} 
-                className="flex items-center justify-center"
-              >
-                <GuardAvatar
-                  guard={guard}
-                  onClick={() => handleAvatarClick(guard.id)}
-                />
-              </div>
+              <GuardAvatar
+                key={guard.id}
+                guard={guard}
+                onClick={handleAvatarClick}
+                onVerificationNeeded={handleVerificationNeeded}
+              />
             ))}
           </div>
-        </CardContent>
+        </div>
       </Card>
-  
+
       <CameraModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         videoRef={videoRef}
         isCameraReady={isCameraReady}
-        countdown={countdown}
-        processingPhoto={processingPhoto}
-        detectionResult={detectionResult}
-        isDetecting={isDetecting || isProcessing}
+        isProcessing={isProcessing}
+        error={error || cameraError}
         mode={isEnrollmentMode ? 'enrollment' : 'verification'}
+        onCapturePhoto={handleCapturePhoto}
+        verificationResult={verificationResult}
+      >
+        <FaceRecognitionAnimation isActive={isCameraReady && !isProcessing} />
+      </CameraModal>
+
+      <GuardNameModal
+        isOpen={isNameModalOpen}
+        onClose={() => setIsNameModalOpen(false)}
+        onSubmit={handleNameSubmit}
       />
     </div>
   );

@@ -1,59 +1,75 @@
-// src/components/GuardAvatar/GuardAvatar.jsx
-import React from 'react';
-import { User } from 'lucide-react';
-import { CircularProgress } from '../CircularProgress/CircularProgress';
+import React, { memo } from 'react';
+import { User } from "lucide-react";
 
-export const GuardAvatar = React.memo(({ guard, onClick }) => {
-  console.log('Guard Avatar rendering:', guard); // Debug log
+const GuardAvatar = memo(({ guard, onClick, onVerificationNeeded }) => {
+  const handleClick = () => {
+    if (guard.timeRemaining === 0 && guard.faceId) {
+      onVerificationNeeded(guard.id);
+    } else {
+      onClick(guard.id);
+    }
+  };
+
+  const getTimerColor = () => {
+    if (!guard.isActive) return 'transparent';
+    if (guard.timeRemaining <= 10) return 'rgb(239, 68, 68)';
+    const blueIntensity = Math.floor((guard.timeRemaining / 60) * 255);
+    return `rgb(${255 - blueIntensity}, ${255 - blueIntensity}, 255)`;
+  };
+
+  const isFlashing = guard.isActive && guard.timeRemaining <= 10;
+  const isDisabled = guard.isAssigned && !guard.faceId;
 
   return (
     <div 
-      onClick={onClick} 
-      className="relative cursor-pointer group"
-      style={{ width: '120px', height: '120px' }} // Explicit size
+      className={`
+        flex flex-col items-center space-y-2 
+        ${isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
+      `} 
+      onClick={handleClick}
     >
-      <div className="relative w-full h-full">
-        {guard.isActive && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <CircularProgress percentage={(guard.timeRemaining / 300) * 100} />
-          </div>
-        )}
+      <div className="relative">
+        {/* Timer circle */}
+        <svg className="absolute -inset-1 w-36 h-36" viewBox="0 0 100 100">
+          <circle
+            cx="50"
+            cy="50"
+            r="48"
+            fill="none"
+            stroke={getTimerColor()}
+            strokeWidth="2"
+            className={`transition-colors duration-1000 ${isFlashing ? 'animate-pulse' : ''}`}
+          />
+        </svg>
         
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div 
-            className={`
-              relative w-16 h-16 rounded-full overflow-hidden border-2
-              ${guard.isActive ? 'border-blue-500' : 'border-gray-200'}
-              transition-all duration-300 ease-in-out
-              group-hover:scale-105 group-hover:border-blue-400
-              bg-white z-10
-            `}
-          >
-            {guard.photo ? (
-              <img 
-                src={guard.photo}
-                alt={`Guard ${guard.id}`}
-                className="w-full h-full object-cover"
-                loading="eager"
-                key={guard.photo}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-100 group-hover:bg-gray-200 transition-colors">
-                <User className="w-8 h-8 text-gray-400" />
-              </div>
-            )}
-          </div>
+        {/* Avatar */}
+        <div className={`
+          relative w-32 h-32 rounded-full overflow-hidden 
+          flex items-center justify-center bg-gray-100
+          ${guard.isActive ? 'ring-2 ring-green-500' : 'ring-2 ring-gray-200'}
+        `}>
+          {guard.photo ? (
+            <img 
+              src={guard.photo} 
+              alt={guard.name} 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <User className="w-16 h-16 text-gray-400" />
+          )}
         </div>
+      </div>
 
-        {guard.isActive && (
-          <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-sm font-medium text-gray-600">
-            {Math.floor(guard.timeRemaining / 60)}:
-            {(guard.timeRemaining % 60).toString().padStart(2, '0')}
-          </div>
-        )}
+      <div className="text-center">
+        <div className="font-medium">
+          {guard.name || `Position ${guard.id}`}
+        </div>
+        <div className="text-sm text-gray-500">
+          {guard.isActive ? `${guard.timeRemaining}s` : 'Inactive'}
+        </div>
       </div>
     </div>
   );
 });
 
-GuardAvatar.displayName = 'GuardAvatar';
+export default GuardAvatar;
