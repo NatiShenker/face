@@ -3,13 +3,14 @@ import { Card, CardContent } from "./Ui/Card/Card";
 import { GuardAvatar } from './GuardAvatar/GuardAvatar';
 import { CameraModal } from './CameraModal/CameraModal';
 import { useFaceDetection } from '../hooks/useFaceDetection';
+import { useAWSRecognition } from '../hooks/useAWSRecognition';
 import { useGuardTimer } from '../hooks/useGuardTimer';
 
 const initialGuards = [
-  { id: 1, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 1' },
-  { id: 2, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 2' },
-  { id: 3, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 3' },
-  { id: 4, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 4' }
+  { id: 1, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 1', faceId: null },
+  { id: 2, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 2', faceId: null },
+  { id: 3, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 3', faceId: null },
+  { id: 4, photo: null, isActive: false, timeRemaining: 60, name: 'Guard 4', faceId: null }
 ];
 
 const SecurityCheckAvatar = () => {
@@ -17,6 +18,7 @@ const SecurityCheckAvatar = () => {
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [countdown, setCountdown] = useState(null);
   const [processingPhoto, setProcessingPhoto] = useState(false);
+  const [isEnrollmentMode, setIsEnrollmentMode] = useState(false);
   
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -24,8 +26,9 @@ const SecurityCheckAvatar = () => {
 
   const [guards, setGuards] = useGuardTimer(initialGuards);
   const { isDetecting, detectionResult, detectFace } = useFaceDetection();
+  const { isProcessing, enrollFace, recognizeFace } = useAWSRecognition();
 
-  const updateGuardPhoto = useCallback((guardId, photoUrl) => {
+  const updateGuardPhoto = useCallback(async (guardId, photoUrl, faceId = null) => {
     setGuards(prevGuards => 
       prevGuards.map(guard => 
         guard.id === guardId 
@@ -33,7 +36,8 @@ const SecurityCheckAvatar = () => {
               ...guard,
               photo: photoUrl,
               isActive: true,
-              timeRemaining: 60, // 1 minute timer
+              timeRemaining: 60,
+              faceId: faceId
             }
           : guard
       )
@@ -60,19 +64,37 @@ const SecurityCheckAvatar = () => {
       // Convert to base64
       const photoUrl = canvas.toDataURL('image/jpeg', 0.8);
 
-      // Start face detection
+      // First detect face using MediaPipe
       await detectFace(photoUrl);
 
-      // If face detection was successful, update the guard's photo
       if (detectionResult?.success) {
-        updateGuardPhoto(guardId, photoUrl);
-        setTimeout(handleCloseModal, 1500); // Give time to see success message
+        if (isEnrollmentMode) {
+          // Enroll face in AWS Rekognition
+          const enrollResult = await enrollFace(photoUrl, guardId);
+          if (enrollResult.success) {
+            await updateGuardPhoto(guardId, photoUrl, enrollResult.faceId);
+            setTimeout(handleCloseModal, 1500);
+          }
+        } else {
+          // Verify face using AWS Rekognition
+          const recognizeResult = await recognizeFace(photoUrl);
+          if (recognizeResult.success && 
+              recognizeResult.matchedGuardId === guardId.toString() && 
+              recognizeResult.confidence > 90) {
+            await updateGuardPhoto(guardId, photoUrl);
+            setTimeout(handleCloseModal, 1500);
+          } else {
+            throw new Error('Face verification failed');
+          }
+        }
       }
     } catch (error) {
-      console.error('Error capturing photo:', error);
+      console.error('Error processing photo:', error);
       handleCloseModal();
+    } finally {
+      setProcessingPhoto(false);
     }
-  }, [detectFace, detectionResult, updateGuardPhoto]);
+  }, [detectFace, detectionResult, enrollFace, recognizeFace, updateGuardPhoto, isEnrollmentMode]);
 
   const startCountdown = useCallback(() => {
     let count = 3;
@@ -125,11 +147,14 @@ const SecurityCheckAvatar = () => {
 
   const handleAvatarClick = useCallback((guardId) => {
     currentGuardIdRef.current = guardId;
+    // Check if this guard already has a faceId
+    const guard = guards.find(g => g.id === guardId);
+    setIsEnrollmentMode(!guard.faceId);
     setIsModalOpen(true);
     setTimeout(() => {
       startCamera();
     }, 100);
-  }, [startCamera]);
+  }, [guards, startCamera]);
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-50">
@@ -159,7 +184,8 @@ const SecurityCheckAvatar = () => {
         countdown={countdown}
         processingPhoto={processingPhoto}
         detectionResult={detectionResult}
-        isDetecting={isDetecting}
+        isDetecting={isDetecting || isProcessing}
+        mode={isEnrollmentMode ? 'enrollment' : 'verification'}
       />
     </div>
   );
