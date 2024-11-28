@@ -7,6 +7,7 @@ export const useGuardState = () => {
     { id: 3, photo: null, isActive: false, timeRemaining: 60, name: null, faceId: null, isAssigned: false },
     { id: 4, photo: null, isActive: false, timeRemaining: 60, name: null, faceId: null, isAssigned: false }
   ]);
+  
 
   useEffect(() => {
     const timer = setInterval(() => {
