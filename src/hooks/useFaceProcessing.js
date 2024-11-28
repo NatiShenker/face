@@ -100,6 +100,7 @@ export const useFaceProcessing = () => {
     } finally {
       processingRef.current = false;
     }
+    
   };
 
   return {
