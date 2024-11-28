@@ -1,12 +1,15 @@
 import { useState, useRef } from 'react';
 import { RekognitionClient, IndexFacesCommand, SearchFacesByImageCommand } from "@aws-sdk/client-rekognition";
+import AWS from 'aws-sdk';
 
 export const useFaceProcessing = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const processingRef = useRef(false);
-
+  console.log('Current AWS Region:', process.env.REACT_APP_AWS_REGION);
+  
   const rekognitionClient = new RekognitionClient({
-    region: process.env.REACT_APP_AWS_REGION,
+    //region: process.env.REACT_APP_AWS_REGION,
+    region: 'us-east-1',
     credentials: {
       accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY
@@ -100,7 +103,7 @@ export const useFaceProcessing = () => {
     } finally {
       processingRef.current = false;
     }
-    
+
   };
 
   return {
