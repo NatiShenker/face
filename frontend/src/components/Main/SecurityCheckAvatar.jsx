@@ -1,19 +1,20 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Card } from "./Ui/Card/Card";
-import { useCamera } from '../hooks/useCamera';
-import { useFaceProcessing } from '../hooks/useFaceProcessing';
-import { useGuardState } from '../hooks/useGuardState';
-import CameraModal from './CameraModal/CameraModal';
-import GuardAvatar from './GuardAvatar/GuardAvatar';
-import GuardNameModal from './GuardNameModal/GuardNameModal';
-import FaceRecognitionAnimation from './FaceRecognitionAnimation/FaceRecognitionAnimation';
-
+import { Card } from "../Ui/Card/Card";
+import { useCamera } from '../../hooks/useCamera';
+import { useFaceProcessing } from '../../hooks/useFaceProcessing';
+import { useGuardState } from '../../hooks/useGuardState';
+import CameraModal from '../CameraModal/CameraModal';
+import GuardAvatar from '../GuardAvatar/GuardAvatar';
+import GuardNameModal from '../GuardNameModal/GuardNameModal';
+import FaceRecognitionAnimation from '../FaceRecognitionAnimation/FaceRecognitionAnimation';
+import SuccessScreen from './SuccessScreen';
 
 const SecurityCheckAvatar = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
   const [error, setError] = useState(null);
   const [verificationResult, setVerificationResult] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
   
   const pendingPhotoRef = useRef(null);
   const pendingFaceIdRef = useRef(null);
@@ -67,7 +68,7 @@ const SecurityCheckAvatar = () => {
             setIsNameModalOpen(true);
           }, 1500);
         } else {
-          // Existing face - use the returned name and guard ID
+          // Existing face - show success and update guard
           setVerificationResult({
             success: true,
             message: `Welcome back, ${result.name}!`,
@@ -79,7 +80,12 @@ const SecurityCheckAvatar = () => {
             timeRemaining: 30 * 60,
             photo: imageData
           });
-          setTimeout(handleCloseModal, 1500);
+
+          // Show success screen after verification
+          setTimeout(() => {
+            handleCloseModal();
+            setShowSuccess(true);
+          }, 1500);
         }
       }
     } catch (err) {
@@ -110,18 +116,22 @@ const SecurityCheckAvatar = () => {
             isActive: true,
             timeRemaining: 30 * 60
           });
+          // Show success screen after enrollment
+          setShowSuccess(true);
         }
       } catch (error) {
         setError('Failed to save user information');
       } finally {
-        // Always clean up regardless of success or failure
         pendingPhotoRef.current = null;
         setIsNameModalOpen(false);
       }
     }
   }, [enrollFace, updateGuard, guards]);
 
-  // Rest of your component remains the same...
+  if (showSuccess) {
+    return <SuccessScreen name={guards[0]?.name} />;
+  }
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-50">
       <Card className="w-[480px]">
@@ -155,6 +165,5 @@ const SecurityCheckAvatar = () => {
     </div>
   );
 };
-
 
 export default SecurityCheckAvatar;

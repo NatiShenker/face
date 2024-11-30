@@ -1,10 +1,10 @@
 import './App.css';
-import SecurityCheckAvatar from './components/SecurityCheckAvatar.jsx'
+import SecurityEntrance from './components/Main/SecurityEntrance';
 
 function App() {
   return (
     <div className="App">
-      <SecurityCheckAvatar />
+      <SecurityEntrance />
     </div>
   );
 }

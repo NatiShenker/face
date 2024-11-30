@@ -20,6 +20,27 @@ module.exports = {
     },
     extend: {
       keyframes: {
+        slideIn: {
+          '0%': { transform: 'translateX(100%)', opacity: 0 },
+          '100%': { transform: 'translateX(0)', opacity: 1 },
+        },
+        slideOut: {
+          '0%': { transform: 'translateX(0)', opacity: 1 },
+          '100%': { transform: 'translateX(-100%)', opacity: 0 },
+        },
+        scaleIn: {
+          '0%': { transform: 'scale(0)', opacity: 0 },
+          '100%': { transform: 'scale(1)', opacity: 1 },
+        },
+        fadeIn: {
+          '0%': { opacity: 0 },
+          '100%': { opacity: 1 },
+        },
+        ripple: {
+          '0%': { opacity: 0 },
+          '25%': { opacity: 0.25 },
+          '100%': { opacity: 0 }
+        },
         scanning: {
           '0%, 100%': { transform: 'translateY(-30px)' },
           '50%': { transform: 'translateY(30px)' }
@@ -68,7 +89,12 @@ module.exports = {
         'face-scan': 'face-scan 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'success-pop': 'success-pop 0.5s ease-out forwards',
         'error-bounce': 'error-bounce 0.5s ease-in-out',
-        'scanning': 'scanning 2s ease-in-out infinite'
+        'scanning': 'scanning 2s ease-in-out infinite',
+        'ripple': 'ripple 0.3s ease-out',
+        slideIn: 'slideIn 0.5s ease-out',
+        slideOut: 'slideOut 0.5s ease-out',
+        scaleIn: 'scaleIn 0.5s ease-out',
+        fadeIn: 'fadeIn 0.5s ease-out',
       }
     }
   },
