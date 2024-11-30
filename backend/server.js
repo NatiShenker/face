@@ -9,6 +9,7 @@ const {
     ListFacesCommand // Add this import
   } = require('@aws-sdk/client-rekognition');
 require('dotenv').config();
+const path = require('path');
 
 const app = express();
 
@@ -16,7 +17,7 @@ const app = express();
 const faceNameMap = new Map();
 
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: ["https://face-9g1u.onrender.com", "http://localhost:3000"],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
   credentials: true
@@ -32,6 +33,8 @@ const rekognitionClient = new RekognitionClient({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
   }
 });
+
+app.use(express.static(path.join(__dirname, '../frontend/build')));
 
 // Updated enroll face endpoint to store name
 app.post('/api/enroll-face', async (req, res) => {
@@ -144,6 +147,11 @@ app.post('/api/reset-collection', async (req, res) => {
       console.error('Reset collection error:', error);
       res.status(500).json({ error: error.message });
     }
+});
+
+// This should be after all your API routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
 });
 
 

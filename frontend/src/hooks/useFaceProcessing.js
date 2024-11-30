@@ -6,7 +6,7 @@ export const useFaceProcessing = () => {
 
   const enrollFace = async (imageData, guardId, username) => {
     try {
-      const response = await fetch('http://localhost:3001/api/enroll-face', {
+      const response = await fetch('/api/enroll-face', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -34,7 +34,7 @@ export const useFaceProcessing = () => {
     setIsProcessing(true);
     
     try {
-      const verifyResponse = await fetch('http://localhost:3001/api/verify-face', {
+      const verifyResponse = await fetch('/api/verify-face', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageData })
