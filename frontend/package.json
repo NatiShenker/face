@@ -1,10 +1,8 @@
 {
-  "homepage": "https://NatiShenker.github.io/face",
-  "name": "face",
+  "name": "face-recognition-frontend",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@aws-sdk/client-rekognition": "^3.699.0",
     "@mediapipe/tasks-vision": "^0.10.18",
     "@radix-ui/react-alert-dialog": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.2",
@@ -12,7 +10,6 @@
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "@vladmandic/face-api": "^1.7.14",
-    "aws-sdk": "^2.1692.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "components": "^0.1.0",

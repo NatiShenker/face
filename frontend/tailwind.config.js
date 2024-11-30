@@ -8,7 +8,6 @@ module.exports = {
     "./src/components/SecurityCheckAvatar/**/*.{js,jsx}",
     "./src/components/GuardAvatar/**/*.{js,jsx}",
     "./src/components/CircularProgress/**/*.{js,jsx}",
-    "./src/components/FaceDetectionIndicator/**/*.{js,jsx}",
   ],
   prefix: "",
   theme: {

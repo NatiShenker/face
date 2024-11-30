@@ -1,10 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 const FaceRecognitionAnimation = ({ isActive }) => {
+  const [countdown, setCountdown] = useState(3);
+
+  useEffect(() => {
+    if (!isActive) {
+      setCountdown(3);
+      return;
+    }
+
+    if (countdown === 0) return;
+
+    const timer = setTimeout(() => {
+      setCountdown(prev => prev - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [isActive, countdown]);
+
   if (!isActive) return null;
 
   return (
     <div className="absolute inset-0 flex items-center justify-center">
+      {/* Countdown Number */}
+      {countdown > 0 && (
+        <div className="absolute z-10 text-6xl font-bold text-sky-500">
+          {countdown}
+        </div>
+      )}
+      
+      {/* Original scanning animation */}
       <svg className="w-64 h-64" viewBox="0 0 100 100">
         {/* Outer circle */}
         <circle
