@@ -1,16 +1,14 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { Card } from "../Ui/Card/Card";
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useCamera } from '../../hooks/useCamera';
 import { useFaceProcessing } from '../../hooks/useFaceProcessing';
 import { useGuardState } from '../../hooks/useGuardState';
 import CameraModal from '../CameraModal/CameraModal';
-import GuardAvatar from '../GuardAvatar/GuardAvatar';
 import GuardNameModal from '../GuardNameModal/GuardNameModal';
 import FaceRecognitionAnimation from '../FaceRecognitionAnimation/FaceRecognitionAnimation';
 import SuccessScreen from './SuccessScreen';
 
 const SecurityCheckAvatar = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(true);
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
   const [error, setError] = useState(null);
   const [verificationResult, setVerificationResult] = useState(null);
@@ -23,23 +21,21 @@ const SecurityCheckAvatar = () => {
   const { isCameraReady, error: cameraError, videoRef, startCamera, stopCamera } = useCamera();
   const { isProcessing, processFrame, enrollFace } = useFaceProcessing();
 
+  useEffect(() => {
+    startCamera().then(() => {
+      setTimeout(() => handleCapturePhoto(), 3000);
+    }).catch(err => {
+      setError('Failed to start camera: ' + err.message);
+    });
+  }, []);
+
+  // ... rest of the handlers remain the same ...
   const handleCloseModal = useCallback(() => {
     stopCamera();
     setIsModalOpen(false);
     setError(null);
     setVerificationResult(null);
   }, [stopCamera]);
-
-  const handleAvatarClick = useCallback(() => {
-    setIsModalOpen(true);
-    setError(null);
-    
-    startCamera().then(() => {
-      setTimeout(() => handleCapturePhoto(), 3000);
-    }).catch(err => {
-      setError('Failed to start camera: ' + err.message);
-    });
-  }, [startCamera]);
 
   const handleCapturePhoto = useCallback(async () => {
     if (!videoRef.current) return;
@@ -56,7 +52,6 @@ const SecurityCheckAvatar = () => {
       
       if (result.success) {
         if (result.isNewFace) {
-          // New face - store photo and prompt for username
           pendingPhotoRef.current = imageData;
           setVerificationResult({
             success: true,
@@ -68,7 +63,6 @@ const SecurityCheckAvatar = () => {
             setIsNameModalOpen(true);
           }, 1500);
         } else {
-          // Existing face - show success and update guard
           setVerificationResult({
             success: true,
             message: `Welcome back, ${result.name}!`,
@@ -81,7 +75,6 @@ const SecurityCheckAvatar = () => {
             photo: imageData
           });
 
-          // Show success screen after verification
           setTimeout(() => {
             handleCloseModal();
             setShowSuccess(true);
@@ -101,7 +94,6 @@ const SecurityCheckAvatar = () => {
   const handleNameSubmit = useCallback(async (name) => {
     if (pendingPhotoRef.current) {
       try {
-        // Enroll face with username
         const enrollResult = await enrollFace(
           pendingPhotoRef.current, 
           guards[0].id, 
@@ -116,7 +108,6 @@ const SecurityCheckAvatar = () => {
             isActive: true,
             timeRemaining: 30 * 60
           });
-          // Show success screen after enrollment
           setShowSuccess(true);
         }
       } catch (error) {
@@ -134,34 +125,37 @@ const SecurityCheckAvatar = () => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-50">
-      <Card className="w-[480px]">
-        <div className="p-6">
-          <div className="grid grid-cols-1 gap-8 p-4">
-            <GuardAvatar
-              guard={guards[0]}
-              onClick={handleAvatarClick}
-            />
+      <div className="w-full max-w-[800px] mx-auto px-4">
+        <div className="relative aspect-[4/3] w-full flex items-center justify-center">
+          {/* iPad Frame - now in portrait orientation */}
+          <div className="relative h-full aspect-[3/4] bg-black rounded-[38px] p-3 shadow-2xl overflow-hidden">
+            {/* iPad Camera Notch */}
+            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-5 bg-black rounded-b-2xl z-10" />
+            
+            {/* Main Content Area */}
+            <div className="bg-white h-full w-full rounded-[32px] relative">
+              {/* Modals */}
+              <CameraModal
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+                videoRef={videoRef}
+                isCameraReady={isCameraReady}
+                isProcessing={isProcessing}
+                error={error || cameraError}
+                verificationResult={verificationResult}
+              >
+                <FaceRecognitionAnimation isActive={isCameraReady && !isProcessing} />
+              </CameraModal>
+
+              <GuardNameModal
+                isOpen={isNameModalOpen}
+                onClose={() => setIsNameModalOpen(false)}
+                onSubmit={handleNameSubmit}
+              />
+            </div>
           </div>
         </div>
-      </Card>
-
-      <CameraModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        videoRef={videoRef}
-        isCameraReady={isCameraReady}
-        isProcessing={isProcessing}
-        error={error || cameraError}
-        verificationResult={verificationResult}
-      >
-        <FaceRecognitionAnimation isActive={isCameraReady && !isProcessing} />
-      </CameraModal>
-
-      <GuardNameModal
-        isOpen={isNameModalOpen}
-        onClose={() => setIsNameModalOpen(false)}
-        onSubmit={handleNameSubmit}
-      />
+      </div>
     </div>
   );
 };

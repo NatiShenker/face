@@ -1,5 +1,5 @@
 import React from 'react';
-import identifySuccess from '../../assets/identify-success.svg';
+import identifySuccess from '../../assets/identify-success.png';
 
 const SuccessScreen = ({ name }) => {
   return (

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import SecurityCheckAvatar from './SecurityCheckAvatar';
-import securityEntrance from '../../assets/security-entrance.svg';
+import securityEntrance from '../../assets/security-entrance.png';
 
 const SecurityEntrance = () => {
   const [showSecurityCheck, setShowSecurityCheck] = useState(false);
