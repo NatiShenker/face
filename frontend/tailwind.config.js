@@ -37,9 +37,8 @@ module.exports = {
           '100%': { opacity: 1 },
         },
         ripple: {
-          '0%': { opacity: 0 },
-          '25%': { opacity: 0.25 },
-          '100%': { opacity: 0 }
+          '0%': { transform: 'translate(-50%, -50%) scale(0.3)', opacity: 1 },
+          '100%': { transform: 'translate(-50%, -50%) scale(1)', opacity: 0 },
         },
         scanning: {
           '0%, 100%': { transform: 'translateY(-30px)' },
@@ -90,7 +89,7 @@ module.exports = {
         'success-pop': 'success-pop 0.5s ease-out forwards',
         'error-bounce': 'error-bounce 0.5s ease-in-out',
         'scanning': 'scanning 2s ease-in-out infinite',
-        'ripple': 'ripple 0.3s ease-out',
+        'ripple': 'ripple 0.6s ease-out',
         slideIn: 'slideIn 0.5s ease-out',
         slideOut: 'slideOut 0.5s ease-out',
         scaleIn: 'scaleIn 0.5s ease-out',

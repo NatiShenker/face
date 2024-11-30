@@ -1,24 +1,20 @@
 import React from 'react';
+import identifySuccess from '../../assets/identify-success.svg';
 
 const SuccessScreen = ({ name }) => {
   return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center bg-gray-50 animate-slideIn">
-      <div className="text-center space-y-6">
-        <img 
-          src="/success-check.png" 
-          alt="Success" 
-          className="w-32 h-32 mx-auto animate-scaleIn"
-        />
-        <h2 className="text-2xl font-semibold mt-4 animate-fadeIn">
-          {name ? `זוהה, נתן שנקר` : 'Success!'}
-        </h2>
-        <p className="text-gray-600 animate-fadeIn">
-          המשיך בערבות במשמרת:)
-        </p>
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-50 animate-slideIn">
+      <div className="relative w-full max-w-[800px] mx-auto px-4">
+        <div className="relative aspect-[4/3] w-full flex flex-col items-center">
+          <img 
+            src={identifySuccess}
+            alt="זיהוי הצליח" 
+            className="w-full h-full object-contain"
+          />
+        </div>
       </div>
     </div>
   );
 };
-
 
 export default SuccessScreen;

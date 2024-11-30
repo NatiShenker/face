@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import SecurityCheckAvatar from './SecurityCheckAvatar';
-import securityEntrance from '../../assets/security-entrance.png';
+import securityEntrance from '../../assets/security-entrance.svg';
 
 const SecurityEntrance = () => {
   const [showSecurityCheck, setShowSecurityCheck] = useState(false);
@@ -15,10 +15,8 @@ const SecurityEntrance = () => {
     setIsRippling(true);
     setIsExiting(true);
     
-    // Wait for ripple animation
     setTimeout(() => {
       setIsRippling(false);
-      // Then trigger the slide transition
       setTimeout(() => {
         setShowSecurityCheck(true);
       }, 300);
@@ -28,42 +26,35 @@ const SecurityEntrance = () => {
   return (
     <div className={`fixed inset-0 flex items-center justify-center bg-gray-50
       ${isExiting ? 'animate-slideOut' : 'animate-slideIn'}`}>
-      <div className="relative">
-        <img 
-          src={securityEntrance}
-          alt="Security Check" 
-          className="pointer-events-none"
-        />
-        <div 
-          onClick={handleClick}
-          style={{
-            width: '22rem',
-            height: '5.2rem',
-            borderRadius: '13px',
-            position: 'absolute',
-            bottom: '.5rem',
-            left: '51%',
-            transform: 'translateX(-50%)',
-            cursor: 'pointer',
-            overflow: 'hidden', // Important for ripple effect
-          }}
-          className={`
-            relative 
-            ${isRippling ? 'after:animate-ripple' : ''} 
-            after:absolute 
-            after:content-[''] 
-            after:bg-white/30 
-            after:w-full 
-            after:h-full 
-            after:top-0 
-            after:left-0 
-            after:opacity-0
-            hover:bg-white/10 
-            transition-colors 
-            duration-300
-          `}
-          aria-label="Click to identify"
-        />
+      <div className="relative w-full max-w-[800px] mx-auto px-4">
+        <div className="relative aspect-[4/3] w-full">
+          <img 
+            src={securityEntrance}
+            alt="Security Check" 
+            className="w-full h-full object-contain pointer-events-none"
+          />
+          <div 
+            onClick={handleClick}
+            className={`
+              absolute bottom-[8%] left-1/2 -translate-x-1/2
+              w-[80%] max-w-[368px] h-20
+              rounded-[28px] cursor-pointer overflow-hidden
+              ${isRippling ? 'after:animate-ripple' : ''} 
+              after:absolute after:content-[''] 
+              after:bg-white/20 
+              after:w-[120%] 
+              after:h-[120%] 
+              after:top-1/2 
+              after:left-1/2
+              after:-translate-x-1/2
+              after:-translate-y-1/2 
+              after:opacity-0
+              transition-transform duration-300
+              active:scale-95
+            `}
+            aria-label="Click to identify"
+          />
+        </div>
       </div>
     </div>
   );
